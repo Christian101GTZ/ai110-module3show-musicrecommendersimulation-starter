@@ -11,23 +11,67 @@ Your goal is to:
 - Evaluate what your system gets right and wrong
 - Reflect on how this mirrors real world AI recommenders
 
-Replace this paragraph with your own summary of what your version does.
+This recommender does not just match songs by genre or mood label. It tries to understand what kind of experience a listener is looking for — how they want to feel, what kind of atmosphere they want to be in, and what the music should do for them emotionally. A song is scored based on how well it creates that experience, not just whether it fits a category. The system looks at things like emotional weight, how immersive the sound is, and whether the song builds over time before deciding what to recommend.
 
 ---
 
 ## How The System Works
 
-Explain your design in plain language.
+Real-world recommenders like Spotify figure out what to play next by either looking at what similar users enjoyed (collaborative filtering) or by comparing the qualities of songs directly (content-based filtering). This simulation uses content-based filtering — it looks at each song's attributes and matches them to what the user is looking for. My version prioritizes how a song feels over time rather than just its genre label, focusing on emotional weight, atmosphere, and how immersive the listening experience is.
 
-Some prompts to answer:
+**Song features used:**
+- `genre` — musical style
+- `mood` — emotional label
+- `energy` — intensity from 0.0 to 1.0
+- `valence` — brightness vs darkness from 0.0 to 1.0
+- `acousticness` — acoustic vs electronic feel from 0.0 to 1.0
+- `danceability` — movement suitability from 0.0 to 1.0
+- `tempo_bpm` — speed in beats per minute
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+**UserProfile features used:**
+- `favorite_genre` — the genre the user prefers
+- `favorite_mood` — the mood they are looking for
+- `target_energy` — their preferred energy level from 0.0 to 1.0
+- `target_valence` — how dark or bright they want the music from 0.0 (dark) to 1.0 (bright)
+- `likes_acoustic` — whether they prefer acoustic or electronic sound
+- `emotional_purpose` — why they are listening: release, escape, reflection, or focus
+- `listening_mode` — how they are listening: focused or immersive
+- `environment_fit` — the context they are listening in: night drive, alone thinking, background, or workout
+- `intensity_type` — the kind of intensity they want: aggressive, atmospheric, aesthetic, emotional, or hybrid
 
-You can include a simple diagram or bullet list if helpful.
+**Algorithm Recipe:**
+
+Each song is scored against the user profile in two layers. The final score determines its rank in the playlist.
+
+*Base layer — always applied:*
+
+| Attribute | Exact match | Partial match (same family) |
+|---|---|---|
+| Genre | +2.0 | +1.0 |
+| Mood | +1.5 | +0.75 |
+| Energy | +1.0 (diff ≤ 0.10) | +0.5 (diff ≤ 0.25) |
+| Valence | +1.0 (diff ≤ 0.10) | +0.5 (diff ≤ 0.25) |
+| Acoustic preference | +0.5 | — |
+
+Genre family examples: lofi, ambient, and dream pop are in the same family. Rock, metalcore, and post-metal are in the same family. Mood family examples: happy and fun are positive. Chill, relaxed, and focused are calm. Moody, dark, emotional, and reflective are dark.
+
+*Context layer — only fires when the user sets the optional profile fields:*
+
+| Field | What it rewards | Max points |
+|---|---|---|
+| `emotional_purpose` | Instrumentalness for focus; energy + danceability for release; acousticness for escape; quiet tone for reflection | +1.0 |
+| `listening_mode` | High instrumentalness + acousticness for immersive; instrumentalness alone for focused | +0.75 |
+| `environment_fit` | Energy + tempo for workout; rhythm for night drive; quiet acoustics for alone thinking; instrumentalness for background | +1.0 |
+| `intensity_type` | Energy + low valence for aggressive; acousticness for atmospheric; danceability + valence for aesthetic; dark mood for emotional | +0.75 |
+
+Maximum possible score: approximately 10.0. Most songs will score between 2 and 6. A song that only matches genre and mood will score at most 3.5. A song that also fits the user's context can reach 7 or higher.
+
+**Potential Biases:**
+
+- The system may over-reward genre matches and bury songs that fit the user's mood and context perfectly but belong to an unfamiliar genre. A user who says they want focus music might miss *Time* by Hans Zimmer (soundtrack) if they only listed lofi as their genre.
+- Genre and mood families reflect a specific cultural grouping. Placing metalcore and post-metal in the same family, or happy and fun in the same family, is a judgment call that may not match every listener's view.
+- The context layer only activates when optional fields are filled in. A user who only sets genre and mood gets a shallower score, which means two very different songs could tie even if one is clearly a better fit.
+- There is no diversity mechanism. The top five results could all be very similar songs if they share the same genre and mood. A real recommender would penalize repetition.
 
 ---
 
